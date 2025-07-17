@@ -333,6 +333,12 @@ class ConeTracker:
     
     def _calculate_iou_matrix(self, boxes1, boxes2):
         """Calculate IoU between two sets of boxes"""
+        # Ensure 2D arrays
+        if boxes1.ndim == 1:
+            boxes1 = boxes1.reshape(1, -1)
+        if boxes2.ndim == 1:
+            boxes2 = boxes2.reshape(1, -1)
+        
         # Expand dimensions for broadcasting
         boxes1 = boxes1[:, np.newaxis, :]  # (N, 1, 4)
         boxes2 = boxes2[np.newaxis, :, :]  # (1, M, 4)
@@ -355,7 +361,10 @@ class ConeTracker:
         # Calculate IoU
         iou = intersection / (union + 1e-6)
         
-        return iou.squeeze()
+        # Return as 2D matrix - only squeeze the first dimension if needed
+        if iou.ndim == 3:
+            return iou.squeeze(axis=0)
+        return iou
     
     def get_tracks_summary(self):
         """Get summary of all active tracks"""
