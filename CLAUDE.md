@@ -4,16 +4,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
-### Running the Tracking System
+### Running the BoT-SORT Tracking System
 ```bash
-# Basic usage with files in standard locations
-python main.py input/videos/video.mov input/models/model.onnx
+# Basic usage with BoT-SORT
+python botsort_simple.py input/videos/video.mov -m input/models/model.onnx
 
-# With output path and preview
-python main.py input/videos/video.mov input/models/model.onnx -o output/tracked_video.mp4 -p
+# With preview and custom confidence
+python botsort_simple.py input/videos/video.mov -m input/models/model.onnx -p -c 0.25
 
-# Adjusting detection confidence (default: 0.5)
-python main.py input/videos/video.mov input/models/model.onnx -c 0.6
+# With custom output path
+python botsort_simple.py input/videos/video.mov -m input/models/model.onnx -o output/tracked.mp4
 ```
 
 ### Environment Setup
@@ -31,44 +31,31 @@ pip install -r requirements.txt
 
 ## Architecture Overview
 
-This is a **detection-tracking-visualization pipeline** for football and cone tracking with speed-based path coloring.
+This is a **BoT-SORT tracking system** for football and cone detection and tracking.
 
 ### Data Flow
-1. **main.py** orchestrates: video → frame extraction → detection → tracking → visualization → output video
-2. **detector.py** wraps YOLO ONNX model, handling preprocessing and coordinate transformation
-3. **tracker.py** implements ByteTrack with two-stage matching (high then low confidence detections)
-4. **visualizer.py** draws bounding boxes, IDs, and speed-colored paths (football only)
-5. **utils.py** provides validation and helper functions
+1. **botsort_simple.py**: Complete pipeline using custom ONNX model + BoT-SORT tracking
+2. **Custom ONNX model**: Detects football (class 1) and cones (class 0) 
+3. **BoT-SORT tracker**: Maintains consistent IDs across frames with re-identification
+4. **Visualization**: Draws bounding boxes, IDs, and trails
 
 ### Key Implementation Details
 
 **Detection System**:
-- Uses ONNX Runtime (not PyTorch/TensorFlow)
-- Detects only 2 classes: football (0) and cone (1)
-- Dynamic input shape adaptation from model
+- Uses custom ONNX model at `input/models/model.onnx`
+- Detects only 2 classes: cone (0) and football (1)
+- Input size: 960x960 pixels
 
-**Tracking Algorithm (ByteTrack)**:
-- Two-stage matching: first high-confidence, then recovers tracks with low-confidence detections
-- Track persistence: maintains tracks for 30 frames without detection
-- False positive filtering: requires 10 frames minimum to be valid
-- Uses scipy's linear_sum_assignment (modified from original lap implementation)
+**Tracking Algorithm (BoT-SORT)**:
+- Built-in Ultralytics BoT-SORT with default parameters
+- Maintains track IDs across frames
+- Handles occlusions and re-identification
+- Default configuration from `botsort.yaml`
 
-**Speed Visualization**:
-- Only football paths are colored by speed
-- Uses matplotlib's RdYlGn_r colormap
-- Speed thresholds: 5, 15, 25 pixels/frame for green→yellow→red
-- Path history limited to 100 points per track
-
-### Critical Parameters
-
-In `tracker.py`:
-- `max_time_lost=30`: frames to maintain track without detection
-- `min_hits=10`: minimum detections before track is valid
-- `track_thresh=0.5`: minimum confidence for primary tracking
-- `match_thresh=0.8`: IoU threshold for detection-track matching
-
-In `visualizer.py`:
-- `speed_thresholds=(5, 15, 25)`: pixel/frame thresholds for color mapping
+**Visualization**:
+- Unique colors for each track ID
+- Trail visualization showing object paths
+- Real-time bounding boxes with IDs
 
 ### File Organization
 ```
